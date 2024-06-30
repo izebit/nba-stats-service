@@ -1,0 +1,100 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Resources:
+
+  ServiceApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: live
+      OpenApiVersion: '3.0.1'
+      EndpointConfiguration:
+        Type: REGIONAL
+      DefinitionBody:
+        x-amazon-apigateway-request-validators:
+          all:
+            validateRequestBody: true
+            validateRequestParameters: true
+        x-amazon-apigateway-request-validator: all
+        'Fn::Transform':
+          Name: 'AWS::Include'
+          Parameters:
+            Location: src/main/resources/openapi.yaml
+
+  ApiGatewayInvokePlayerStatLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt PlayerStatsLambda.Arn
+      Principal: 'apigateway.amazonaws.com'
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ServiceApiGateway}/*/*
+
+  PlayerStatsLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: target/lambda-functions.jar
+      Handler: ru.izebit.PlayerStatsFunction
+      Description: It receives player stat requests
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambda_ReadOnlyAccess
+      Runtime: java21
+      MemorySize: 3008
+      Timeout: 30
+      Architectures:
+        - arm64
+
+  ApiGatewayInvokeTeamStatLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt TeamStatsLambda.Arn
+      Principal: 'apigateway.amazonaws.com'
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ServiceApiGateway}/*/*
+
+  TeamStatsLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: target/lambda-functions.jar
+      Handler: ru.izebit.TeamStatsFunction
+      Description: It receives team stat requests
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambda_ReadOnlyAccess
+      Runtime: java21
+      MemorySize: 3008
+      Timeout: 30
+      Architectures:
+        - arm64
+
+  ApiGatewayInvokeLogLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt LogLambda.Arn
+      Principal: 'apigateway.amazonaws.com'
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ServiceApiGateway}/*/*
+
+  LogLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: target/lambda-functions.jar
+      Handler: ru.izebit.LogFunction
+      Description: store stats records
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambda_ReadOnlyAccess
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt LogTopic.TopicName
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref LogTopic
+      Runtime: java21
+      MemorySize: 3008
+      Timeout: 30
+      Architectures:
+        - arm64
+
+  LogTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: stat-records-topic
