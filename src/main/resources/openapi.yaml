@@ -1,0 +1,170 @@
+---
+openapi: 3.0.0
+info:
+  title: API Gateway Of NBA Stat Service
+  version: 1.0.0
+
+paths:
+  /api/v1/stats/seasons/{season_id}/teams/{team_id}:
+    parameters:
+      - name: season_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 0
+      - name: team_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 0
+    get:
+      summary: get statistics of a team
+      operationId: TeamStatsLambda
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${TeamStatsLambda.Arn}/invocations
+        httpMethod: POST
+        type: aws_proxy
+      responses:
+        '200':
+          description: average stat values
+          content:
+            application/json:
+              schema:
+                '$ref': '#/components/schemas/StatsData'
+        '404':
+          description: not found
+
+  /api/v1/stats/seasons/{season_id}/teams/{team_id}/players/{player_id}:
+    parameters:
+      - name: season_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 0
+      - name: team_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 0
+      - name: player_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 0
+    post:
+      summary: add new statistic data of a player
+      operationId: LogLambda
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LogLambda.Arn}/invocations
+        httpMethod: POST
+        type: aws_proxy
+      requestBody:
+        content:
+          application/json:
+            schema:
+              '$ref': '#/components/schemas/StatsLogData'
+      responses:
+        '200':
+          description: added
+        '404':
+          description: not found
+        '400':
+          description: wrong values
+    get:
+      summary: get statistics of a player
+      operationId: PlayerStatsLambda
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PlayerStatsLambda.Arn}/invocations
+        httpMethod: POST
+        type: aws_proxy
+      responses:
+        '200':
+          description: average stat values
+          content:
+            application/json:
+              schema:
+                '$ref': '#/components/schemas/StatsData'
+        '404':
+          description: not found
+
+components:
+  schemas:
+    StatsData:
+      type: object
+      properties:
+        points:
+          type: number
+          format: float
+          minimum: 0
+        rebounds:
+          type: number
+          format: float
+          minimum: 0
+        assists:
+          type: number
+          format: float
+          minimum: 0
+        steals:
+          type: number
+          format: float
+          minimum: 0
+        blocks:
+          type: number
+          format: float
+          minimum: 0
+        fouls:
+          type: number
+          format: float
+          minimum: 0
+        turnovers:
+          type: number
+          format: float
+          minimum: 0
+        minutesPlayed:
+          type: number
+          format: float
+          minimum: 0
+
+    StatsLogData:
+      type: object
+      properties:
+        points:
+          type: integer
+          minimum: 0
+        rebounds:
+          type: integer
+          minimum: 0
+        assists:
+          type: integer
+          minimum: 0
+        steals:
+          type: integer
+          minimum: 0
+        blocks:
+          type: integer
+          minimum: 0
+        fouls:
+          type: integer
+          minimum: 0
+          maximum: 6
+        turnovers:
+          type: integer
+          minimum: 0
+        minutesPlayed:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 48.0
