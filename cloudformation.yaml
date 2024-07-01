@@ -1,100 +1,142 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
+Parameters:
+  DBUsername:
+    Type: String
+    Description: The database admin account username
+    Default: 'admin' 
+  DBPassword:
+    Type: String
+    Description: The database admin account password
+    Default: "Password123"
+    NoEcho: true 
+  DBName:
+    Type: String
+    Description: The name of the database
+    Default: 'MyDatabase'
+
 Resources:
-
-  ServiceApiGateway:
-    Type: AWS::Serverless::Api
+  VPC:
+    Type: 'AWS::EC2::VPC'
     Properties:
-      StageName: live
-      OpenApiVersion: '3.0.1'
-      EndpointConfiguration:
-        Type: REGIONAL
-      DefinitionBody:
-        x-amazon-apigateway-request-validators:
-          all:
-            validateRequestBody: true
-            validateRequestParameters: true
-        x-amazon-apigateway-request-validator: all
-        'Fn::Transform':
-          Name: 'AWS::Include'
-          Parameters:
-            Location: src/main/resources/openapi.yaml
+      CidrBlock: 10.0.0.0/16
 
-  ApiGatewayInvokePlayerStatLambdaPermission:
-    Type: 'AWS::Lambda::Permission'
+  PrivateSubnet1:
+    Type: 'AWS::EC2::Subnet'
     Properties:
-      Action: 'lambda:InvokeFunction'
-      FunctionName: !GetAtt PlayerStatsLambda.Arn
-      Principal: 'apigateway.amazonaws.com'
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ServiceApiGateway}/*/*
-
-  PlayerStatsLambda:
-    Type: AWS::Serverless::Function
+      VpcId: !Ref VPC
+      CidrBlock: '10.0.1.0/24'
+      AvailabilityZone:  !Select
+        - 0
+        - Fn::GetAZs: !Ref 'AWS::Region'
+  
+  PrivateSubnet2:
+    Type: 'AWS::EC2::Subnet'
     Properties:
-      CodeUri: target/lambda-functions.jar
-      Handler: ru.izebit.PlayerStatsFunction
-      Description: It receives player stat requests
-      Policies:
-        - AWSLambdaBasicExecutionRole
-        - AWSLambda_ReadOnlyAccess
-      Runtime: java21
-      MemorySize: 3008
-      Timeout: 30
-      Architectures:
-        - arm64
-
-  ApiGatewayInvokeTeamStatLambdaPermission:
-    Type: 'AWS::Lambda::Permission'
+      VpcId: !Ref VPC
+      CidrBlock: '10.0.2.0/24'
+      AvailabilityZone:  !Select
+        - 1
+        - Fn::GetAZs: !Ref 'AWS::Region'
+  
+  PrivateSubnet3:
+    Type: 'AWS::EC2::Subnet'
     Properties:
-      Action: 'lambda:InvokeFunction'
-      FunctionName: !GetAtt TeamStatsLambda.Arn
-      Principal: 'apigateway.amazonaws.com'
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ServiceApiGateway}/*/*
+      VpcId: !Ref VPC
+      CidrBlock: '10.0.3.0/24'
+      AvailabilityZone:  !Select
+        - 2
+        - Fn::GetAZs: !Ref 'AWS::Region'
 
+  RDSSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable Lambda access to RDS
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '3306'
+          ToPort: '3306'
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+  
+  DBSubnetGroup:
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: Subnet group for RDS instance
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+  
+  LambdaSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Security group for Lambda function
+      VpcId: !Ref VPC
+      
   TeamStatsLambda:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: target/lambda-functions.jar
       Handler: ru.izebit.TeamStatsFunction
       Description: It receives team stat requests
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+          - !Ref PrivateSubnet3
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaBasicExecutionRole
         - AWSLambda_ReadOnlyAccess
-      Runtime: java21
-      MemorySize: 3008
-      Timeout: 30
-      Architectures:
-        - arm64
-
-  ApiGatewayInvokeLogLambdaPermission:
-    Type: 'AWS::Lambda::Permission'
-    Properties:
-      Action: 'lambda:InvokeFunction'
-      FunctionName: !GetAtt LogLambda.Arn
-      Principal: 'apigateway.amazonaws.com'
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ServiceApiGateway}/*/*
-
-  LogLambda:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: target/lambda-functions.jar
-      Handler: ru.izebit.LogFunction
-      Description: store stats records
-      Policies:
-        - AWSLambdaBasicExecutionRole
-        - AWSLambda_ReadOnlyAccess
-        - SNSPublishMessagePolicy:
-            TopicName: !GetAtt LogTopic.TopicName
       Environment:
         Variables:
-          SNS_TOPIC_ARN: !Ref LogTopic
+          DB_USER: !Ref DBUsername
+          DB_PASSWORD: !Ref DBPassword
+          DB_DATABASE: !Ref DBName
+          DB_URL: !GetAtt MyDBCluster.ReadEndpoint.Address
       Runtime: java21
-      MemorySize: 3008
+      MemorySize: 128
       Timeout: 30
-      Architectures:
-        - arm64
 
-  LogTopic:
-    Type: AWS::SNS::Topic
+  MyDBCluster:
+    Type: 'AWS::RDS::DBCluster'
     Properties:
-      TopicName: stat-records-topic
+      Engine: aurora-mysql
+      EngineMode: provisioned
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DatabaseName: !Ref DBName
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref RDSSecurityGroup
+      BackupRetentionPeriod: 2
+
+  # Primary Instance
+  MyDBInstance:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBClusterIdentifier: !Ref MyDBCluster
+      DBInstanceClass: db.r5.large
+      Engine: aurora-mysql
+      PubliclyAccessible: false
+
+  # Read Replica 1
+  MyReadReplica1:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBClusterIdentifier: !Ref MyDBCluster
+      DBInstanceClass: db.r5.large
+      Engine: aurora-mysql
+      PubliclyAccessible: false
+
+  # Read Replica 2
+  MyReadReplica2:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBClusterIdentifier: !Ref MyDBCluster
+      DBInstanceClass: db.r5.large
+      Engine: aurora-mysql
+      PubliclyAccessible: false
