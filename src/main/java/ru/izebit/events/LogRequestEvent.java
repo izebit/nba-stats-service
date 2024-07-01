@@ -1,6 +1,5 @@
 package ru.izebit.events;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -9,7 +8,7 @@ import lombok.NoArgsConstructor;
 public class LogRequestEvent {
     private long seasonId;
     private long teamId;
-    private long playerId;
+    private Long playerId;
 
     private int points;
     private int rebounds;

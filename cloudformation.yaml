@@ -73,33 +73,6 @@ Resources:
     Properties:
       GroupDescription: Security group for Lambda function
       VpcId: !Ref VPC
-      
-  TeamStatsLambda:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: target/lambda-functions.jar
-      Handler: ru.izebit.TeamStatsFunction
-      Description: It receives team stat requests
-      VpcConfig:
-        SecurityGroupIds:
-          - !Ref LambdaSecurityGroup
-        SubnetIds:
-          - !Ref PrivateSubnet1
-          - !Ref PrivateSubnet2
-          - !Ref PrivateSubnet3
-      Policies:
-        - AWSLambdaVPCAccessExecutionRole
-        - AWSLambdaBasicExecutionRole
-        - AWSLambda_ReadOnlyAccess
-      Environment:
-        Variables:
-          DB_USER: !Ref DBUsername
-          DB_PASSWORD: !Ref DBPassword
-          DB_DATABASE: !Ref DBName
-          DB_URL: !GetAtt MyDBCluster.ReadEndpoint.Address
-      Runtime: java21
-      MemorySize: 128
-      Timeout: 30
 
   MyDBCluster:
     Type: 'AWS::RDS::DBCluster'
@@ -140,3 +113,193 @@ Resources:
       DBInstanceClass: db.r5.large
       Engine: aurora-mysql
       PubliclyAccessible: false
+
+  ServiceApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: live
+      OpenApiVersion: '3.0.1'
+      EndpointConfiguration:
+        Type: REGIONAL
+      DefinitionBody:
+        x-amazon-apigateway-request-validators:
+          all:
+            validateRequestBody: true
+            validateRequestParameters: true
+        x-amazon-apigateway-request-validator: all
+        'Fn::Transform':
+          Name: 'AWS::Include'
+          Parameters:
+            Location: src/main/resources/openapi.yaml
+
+  ApiGatewayInvokePlayerStatLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt PlayerStatsLambda.Arn
+      Principal: 'apigateway.amazonaws.com'
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ServiceApiGateway}/*/*
+  
+  TeamStatsLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: target/lambda-functions.jar
+      Handler: ru.izebit.TeamStatsFunction
+      Description: It receives team stat requests
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+          - !Ref PrivateSubnet3
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
+        - AWSLambdaBasicExecutionRole
+        - AWSLambda_ReadOnlyAccess
+      Environment:
+        Variables:
+          DB_USER: !Ref DBUsername
+          DB_PASSWORD: !Ref DBPassword
+          DB_DATABASE: !Ref DBName
+          DB_URL: !GetAtt MyDBCluster.ReadEndpoint.Address
+      Runtime: java21
+      MemorySize: 128
+      Timeout: 30
+
+  PlayerStatsLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: target/lambda-functions.jar
+      Handler: ru.izebit.PlayerStatsFunction
+      Description: It receives player stat requests
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+          - !Ref PrivateSubnet3
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
+        - AWSLambdaBasicExecutionRole
+        - AWSLambda_ReadOnlyAccess
+      Environment:
+        Variables:
+          DB_USER: !Ref DBUsername
+          DB_PASSWORD: !Ref DBPassword
+          DB_DATABASE: !Ref DBName
+          DB_URL: !GetAtt MyDBCluster.ReadEndpoint.Address
+      Runtime: java21
+      MemorySize: 128
+      Timeout: 30
+
+  LogLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: target/lambda-functions.jar
+      Handler: ru.izebit.LogFunction
+      Description: store stats records
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambda_ReadOnlyAccess
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt LogTopic.TopicName
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref LogTopic
+      Runtime: java21
+      MemorySize: 128
+      Timeout: 30
+
+  TeamStatsUpdateLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: target/lambda-functions.jar
+      Handler: ru.izebit.TeamStatsUpdateFunction
+      Description: reads events from sns topic and store them to database
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+          - !Ref PrivateSubnet3
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
+        - AWSLambdaBasicExecutionRole
+        - AWSLambda_ReadOnlyAccess
+      Environment:
+        Variables:
+          DB_USER: !Ref DBUsername
+          DB_PASSWORD: !Ref DBPassword
+          DB_DATABASE: !Ref DBName
+          DB_URL: !GetAtt MyDBCluster.Endpoint.Address
+          SNS_TOPIC_ARN: !Ref LogTopic
+      Events:
+        SnsEvent:
+          Type: SNS
+          Properties:
+            Topic: !Ref LogTopic
+      Runtime: java21
+      MemorySize: 128
+      Timeout: 30
+
+  PlayerStatsUpdateLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: target/lambda-functions.jar
+      Handler: ru.izebit.PlayerStatsUpdateFunction
+      Description: reads events from sns topic and store them to database
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+          - !Ref PrivateSubnet3
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
+        - AWSLambdaBasicExecutionRole
+        - AWSLambda_ReadOnlyAccess
+      Environment:
+        Variables:
+          DB_USER: !Ref DBUsername
+          DB_PASSWORD: !Ref DBPassword
+          DB_DATABASE: !Ref DBName
+          DB_URL: !GetAtt MyDBCluster.Endpoint.Address
+          SNS_TOPIC_ARN: !Ref LogTopic
+      Events:
+        SnsEvent:
+          Type: SNS
+          Properties:
+            Topic: !Ref LogTopic
+      Runtime: java21
+      MemorySize: 128
+      Timeout: 30
+
+  LogTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: stat-records-topic
+
+  ApiGatewayInvokeTeamStatLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt TeamStatsLambda.Arn
+      Principal: 'apigateway.amazonaws.com'
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ServiceApiGateway}/*/*
+
+  ApiGatewayInvokeLogLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt LogLambda.Arn
+      Principal: 'apigateway.amazonaws.com'
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ServiceApiGateway}/*/*
+
+Outputs:
+  ApiEndpoint:
+    Description: 'API Gateway endpoint URL'
+    Value: !Sub 'https://${ServiceApiGateway}.execute-api.${AWS::Region}.amazonaws.com/live'

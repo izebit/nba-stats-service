@@ -4,11 +4,7 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.SneakyThrows;
-import org.springframework.jdbc.core.JdbcTemplate;
-import ru.izebit.db.JdbcTemplateFactory;
-import ru.izebit.db.Tables;
 import ru.izebit.events.StatResponseEvent;
 
 import java.util.Map;
@@ -30,10 +26,6 @@ public class TeamStatsFunction extends AbstractDatabaseFunction implements Reque
                    FROM team_stats
                    WHERE team_id = ? and season_id = ?
             """;
-
-    protected TeamStatsFunction() {
-        super(Tables.TEAM_STATS_DDL);
-    }
 
     @Override
     @SneakyThrows

@@ -5,7 +5,6 @@ import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import lombok.SneakyThrows;
-import ru.izebit.db.Tables;
 import ru.izebit.events.StatResponseEvent;
 
 import java.util.Map;
@@ -27,10 +26,6 @@ public class PlayerStatsFunction extends AbstractDatabaseFunction implements Req
                    FROM players_stats
                    WHERE player_id = ? and season_id = ?
             """;
-
-    protected PlayerStatsFunction() {
-        super(Tables.PLAYERS_STATS_DDL);
-    }
 
     @Override
     @SneakyThrows

@@ -7,7 +7,7 @@ import lombok.SneakyThrows;
 import ru.izebit.db.Tables;
 import ru.izebit.events.LogRequestEvent;
 
-public class PlayerStatsDatabaseFunction extends AbstractDatabaseFunction implements RequestHandler<SNSEvent, Void> {
+public class PlayerStatsUpdateFunction extends AbstractDatabaseFunction implements RequestHandler<SNSEvent, Void> {
     private static final String SQL = """
             INSERT INTO players_stats (
                 player_id,
@@ -35,7 +35,7 @@ public class PlayerStatsDatabaseFunction extends AbstractDatabaseFunction implem
                   minutesPlayed = minutesPlayed + VALUES(minutesPlayed)
             """;
 
-    protected PlayerStatsDatabaseFunction() {
+    public PlayerStatsUpdateFunction() {
         super(Tables.PLAYERS_STATS_DDL);
     }
 

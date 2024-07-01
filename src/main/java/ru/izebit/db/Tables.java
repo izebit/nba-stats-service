@@ -8,7 +8,7 @@ public class Tables {
             CREATE TABLE IF NOT EXISTS players_stats (
                   player_id     INT,
                   season_id     INT,
-                  game_count    INT,
+                  game_count    INT DEFAULT 1,
                   points        INT DEFAULT 0,
                   rebounds      INT DEFAULT 0,
                   assists       INT DEFAULT 0,
@@ -25,7 +25,7 @@ public class Tables {
             CREATE TABLE IF NOT EXISTS team_stats (
                   team_id       INT,
                   season_id     INT,
-                  game_count    INT,
+                  game_count    INT DEFAULT 1,
                   points        INT DEFAULT 0,
                   rebounds      INT DEFAULT 0,
                   assists       INT DEFAULT 0,

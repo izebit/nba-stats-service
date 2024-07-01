@@ -38,7 +38,7 @@ public class LogFunction implements RequestHandler<APIGatewayProxyRequestEvent, 
 
         return new APIGatewayProxyResponseEvent()
                 .withStatusCode(200)
-                .withBody("Message published to SNS topic");
+                .withBody("the data has been received");
     }
 }
 
