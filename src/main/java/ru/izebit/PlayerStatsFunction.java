@@ -4,19 +4,16 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.SneakyThrows;
-import org.springframework.jdbc.core.JdbcTemplate;
-import ru.izebit.db.JdbcTemplateFactory;
 import ru.izebit.db.Tables;
 import ru.izebit.events.StatResponseEvent;
 
 import java.util.Map;
 
-public class TeamStatsFunction extends AbstractDatabaseFunction implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
+public class PlayerStatsFunction extends AbstractDatabaseFunction implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
     private static final String SQL = """
                    SELECT
-                       team_id,
+                       player_id,
                        season_id,
                        points,
                        rebounds,
@@ -27,22 +24,23 @@ public class TeamStatsFunction extends AbstractDatabaseFunction implements Reque
                        turnovers,
                        minutesPlayed,
                        game_count
-                   FROM team_stats
-                   WHERE team_id = ? and season_id = ?
+                   FROM players_stats
+                   WHERE player_id = ? and season_id = ?
             """;
 
-    protected TeamStatsFunction() {
-        super(Tables.TEAM_STATS_DDL);
+    protected PlayerStatsFunction() {
+        super(Tables.PLAYERS_STATS_DDL);
     }
 
     @Override
     @SneakyThrows
     public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent request, Context context) {
         var seasonId = Long.parseLong(request.getPathParameters().get("season_id"));
+        var playerId = Long.parseLong(request.getPathParameters().get("player_id"));
         var teamId = Long.parseLong(request.getPathParameters().get("team_id"));
 
         var event = JDBC_TEMPLATE.query(SQL, ps -> {
-            ps.setLong(1, teamId);
+            ps.setLong(1, playerId);
             ps.setLong(2, seasonId);
         }, rs -> {
             if (!rs.next())
@@ -51,6 +49,7 @@ public class TeamStatsFunction extends AbstractDatabaseFunction implements Reque
             var e = new StatResponseEvent();
             e.setTeamId(teamId);
             e.setSeasonId(seasonId);
+            e.setPlayerId(playerId);
             double gameCount = rs.getInt("game_count");
             e.setPoints(rs.getInt("points") / gameCount);
             e.setRebounds(rs.getInt("rebounds") / gameCount);
@@ -65,7 +64,7 @@ public class TeamStatsFunction extends AbstractDatabaseFunction implements Reque
 
         if (event == null)
             return new APIGatewayProxyResponseEvent()
-                    .withStatusCode(400)
+                    .withStatusCode(404)
                     .withBody("not found");
 
         return new APIGatewayProxyResponseEvent()
