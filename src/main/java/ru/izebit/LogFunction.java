@@ -20,8 +20,6 @@ public class LogFunction implements RequestHandler<APIGatewayProxyRequestEvent, 
     @Override
     @SneakyThrows
     public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent event, Context context) {
-        context.getLogger().log("Received request: " + event.getBody());
-
         var seasonId = event.getPathParameters().get("season_id");
         var teamId = event.getPathParameters().get("team_id");
         var playerId = event.getPathParameters().get("player_id");
@@ -41,7 +39,6 @@ public class LogFunction implements RequestHandler<APIGatewayProxyRequestEvent, 
         return new APIGatewayProxyResponseEvent()
                 .withStatusCode(200)
                 .withBody("Message published to SNS topic");
-
     }
 }
 
