@@ -1,15 +1,15 @@
 ## NBA-Stats-Service
 
 ## Rest API Specification
-there are 3 endpoints:
-1. POST /api/v1/stats/seasons/{season_id}/teams/{team_id}/players/{player_id}  
+There are 3 endpoints:
+1. **POST** `/api/v1/stats/seasons/{season_id}/teams/{team_id}/players/{player_id}`  
    send stats data to the service
-2. GET /api/v1/stats/seasons/{season_id}/teams/{team_id}/players/{player_id}  
+2. **GET** `/api/v1/stats/seasons/{season_id}/teams/{team_id}/players/{player_id}`  
    get stat data for specific player
-3. GET /api/v1/stats/seasons/{season_id}/teams/{team_id}  
+3. **GET** `/api/v1/stats/seasons/{season_id}/teams/{team_id}`  
    get stat data for specific team
 
-The file with open api spec is here
+The file with open api specification is here
 
 ## How it works
 
@@ -27,3 +27,7 @@ aws cloudformation deploy --template-file target/out.yml --stack-name nba-stats-
 ```
 
 The output parameter `ApiEndpoint` is a url of the running service.
+
+```shell
+curl ${ApiEndpoint}/api/v1/stats/seasons/1/teams/1
+```

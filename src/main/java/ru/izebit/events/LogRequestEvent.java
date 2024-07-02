@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 public class LogRequestEvent {
     private long seasonId;
     private long teamId;
-    private Long playerId;
+    private long playerId;
 
     private int points;
     private int rebounds;

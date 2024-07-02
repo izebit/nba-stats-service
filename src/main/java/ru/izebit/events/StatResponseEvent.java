@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 public class StatResponseEvent {
     private long seasonId;
     private long teamId;
-    private long playerId;
+    private Long playerId;
 
     private double points;
     private double rebounds;
