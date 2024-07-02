@@ -9,16 +9,15 @@ There are 3 endpoints:
 3. **GET** `/api/v1/stats/seasons/{season_id}/teams/{team_id}`  
    get stat data for specific team
 
-The file with open api specification is here
+The file with open api specification is [here](https://github.com/izebit/nba-stats-service/blob/main/src/main/resources/openapi.yaml)
 
 ## How it works
 
-
-
+![diagram](https://github.com/izebit/nba-stats-service/blob/main/docs/diagram.jpg?raw=true)
 
 ## Build  
 The service works on AWS. To create all required components, run the cloudformation template.  
-To run it, there must be an existing s3 bucket.
+To run it, you should create s3 bucket first.
 
 ```shell
 mvn clean package
@@ -26,7 +25,7 @@ aws cloudformation package --template-file cloudformation.yaml --s3-bucket <s3-b
 aws cloudformation deploy --template-file target/out.yml --stack-name nba-stats-stack --capabilities CAPABILITY_NAMED_IAM
 ```
 
-The output parameter `ApiEndpoint` is a url of the running service.
+The output parameter `ApiEndpoint` is url of the running service.
 
 ```shell
 curl ${ApiEndpoint}/api/v1/stats/seasons/1/teams/1
