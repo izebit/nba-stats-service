@@ -5,9 +5,9 @@ There are 3 endpoints:
 1. **POST** `/api/v1/stats/seasons/{season_id}/teams/{team_id}/players/{player_id}`  
    send stats data to the service
 2. **GET** `/api/v1/stats/seasons/{season_id}/teams/{team_id}/players/{player_id}`  
-   get stat data for specific player
+   get stats data for a specific player
 3. **GET** `/api/v1/stats/seasons/{season_id}/teams/{team_id}`  
-   get stat data for specific team
+   get stats data for a specific team
 
 The file with open api specification is [here](https://github.com/izebit/nba-stats-service/blob/main/src/main/resources/openapi.yaml)
 
